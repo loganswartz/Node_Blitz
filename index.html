@@ -7,8 +7,18 @@
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans">
 	<title>Document</title>
 	<style>
-		::root {
-			--opponent-card-inset: 50%;
+		@font-face {
+			font-family: 'Cimbrian';
+			src: url('Cimbrian.ttf')  format('truetype');
+		}
+
+		:root {
+			--card-height: 21vh;
+			--card-width: 15vh;
+			--card-scale: 1;
+			--opponent-card-inset: 0.5; /* 0.5 == cards are inset by 50% */
+			--opponent-card-scale: 50%;
+			--card-container-padding: 3vh;
 		}
 
 		* {
@@ -26,11 +36,11 @@
 		}
 
 		main {
-			height: calc(100vh - 37.5vh);
-			width: calc(100vw - 25vh);
+			height: calc(100vh - (((var(--card-height) / 2) + (2 * var(--card-container-padding))) * var(--opponent-card-inset)) * 4.3 + 2px);
+			width: calc(100vw - (((var(--card-height) / 2) + (2 * var(--card-container-padding))) * var(--opponent-card-inset)) * 2 + 2px);
 			position: absolute;
-			left: 12.5vh;
-			top: 12.5vh;
+			left: calc(((var(--card-height) / 2) + (2 * var(--card-container-padding))) * var(--opponent-card-inset) - 1px);
+			top: calc(((var(--card-height) / 2) + (2 * var(--card-container-padding))) * var(--opponent-card-inset) - 1px);
 		}
 
 		#player, #opponent-top {
@@ -48,6 +58,7 @@
 			left: 50%;
 			bottom: 0;
 			transform: translate(-50%);
+			height: min-content;
 		}
 
 		#opponent-left {
@@ -55,8 +66,9 @@
 			left: 0;
 			top: 0;
 			transform-origin: top left;
-			transform: rotate(90deg) translate(0%, -50%);
+			transform: rotate(90deg) translate(0%, calc((100% * var(--opponent-card-inset)) - 100%));
 			z-index: 2;
+			height: min-content;
 		}
 
 		#opponent-top {
@@ -64,7 +76,8 @@
 			left: 50%;
 			top: 0;
 			transform-origin: top;
-			transform: rotate(180deg) translate(50%, -50%);
+			transform: rotate(180deg) translate(50%, calc((100% * var(--opponent-card-inset)) - 100%));
+			height: min-content;
 		}
 
 		#opponent-right {
@@ -72,12 +85,20 @@
 			right: 0;
 			top: 0;
 			transform-origin: top right;
-			transform: rotate(-90deg) translate(0%, -50%);
+			transform: rotate(-90deg) translate(0%, calc((100% * var(--opponent-card-inset)) - 100%));
 			z-index: 2;
+			height: min-content;
 		}
 
 		.opponent {
 			top: 0;
+		}
+
+		.opponent > .card {
+			height: calc(var(--card-scale) * var(--card-height) / 2);
+			width: calc(var(--card-scale) * var(--card-width) / 2);
+			font-size: 1.5rem;
+			border-radius: 0.75rem;
 		}
 
 		.cards-container {
@@ -85,6 +106,7 @@
 			background-color: rgba(193, 154, 107, 1);
 			justify-content: center;
 			align-items: center;
+			padding: var(--card-container-padding);
 		}
 
 		.hidden {
@@ -94,17 +116,19 @@
 		.card {
 			position: relative;
 			flex: 0 0 auto;
-			height: 20vh;
-			width: 16vh;
+			height: calc(var(--card-scale) * var(--card-height));
+			width: calc(var(--card-scale) * var(--card-width));
 			margin: 0 1rem 0 1rem;
-			border-radius: 0.6rem;
+			border-radius: 1.5rem;
 			border: 0.1rem solid rgba(255, 255, 255, 0.1);
 			box-shadow: 0 0 0.3rem rgba(0, 0, 0, 0.2);
+			font-family: 'Cimbrian', Fallback, Serif;
+			font-size: 3rem;
 		}
 
 		#player > .card:hover {
 			box-shadow: 0 0 0.3rem rgba(0, 0, 0, 0.4);
-			bottom: 1rem;
+			bottom: 1vh;
 		}
 
 		.red {
@@ -131,7 +155,11 @@
 			
 		</main>
 		<div id='player' class='cards-container'>
-			<div class='red card'></div>
+			<div class='red card'>
+				<span>1</span>
+				<div></div>
+				<span>1</span>
+			</div>
 			<div class='blue card'></div>
 			<div class='green card'></div>
 			<div class='yellow card'></div>

@@ -70,30 +70,68 @@ class Card {
 }
 
 
-let connections = [];
+let connections = 0;
 
 io.sockets.on('connection', (socket) => {
-	connections.push(socket);
-	console.log(`Connected: ${connections.length} sockets connected`);
+	connections++;
+	console.log(`Connected: ${connections} sockets connected`);
 
 	socket.on('disconnect', () => {
-		connections.splice(connections.indexOf(socket), 1);
+		connections--;
+	});
+
+	socket.on('create_game', () => {
+		let gamecode = generateGameCode();
+		while(roomExists(gamecode)) {
+			gamecode = generateGameCode();
+		}
+		socket.join(gamecode);
+		socket.gamecode = gamecode;
+		socket.deck = new Deck();
+
+		socket.emit('show_game_screen');
+		socket.emit('display_gamecode', gamecode);
+		// update card views for everyone in the game
+		broadcast_all_cards(gamecode);
+		room = getRoom(gamecode);
+		room.dutchPiles = [null, null, null, null, null, null, null, null];
 	});
 
 	socket.on('join_game', (gamecode) => {
 		// check if game exists, if so, are there 4 players already?
-		if(io.sockets.adapter.rooms[gamecode] != undefined && getRoomSize(gamecode) >= 4) {
+		if(roomExists(gamecode) && getRoomSize(gamecode) >= 4) {
 			// game full, reject newbies
 			socket.emit('join_game_failed');
 		} else {
 			// join game
 			socket.join(gamecode);
+			socket.gamecode = gamecode;
 			// deal new deck to player
 			socket.deck = new Deck();
 
+			socket.emit('show_game_screen');
+			socket.emit('display_gamecode', gamecode);
 			// update card views for everyone in the game
 			broadcast_all_cards(gamecode);
 		}
+	});
+
+	socket.on('set_nickname', (nickname) => {
+		if(nickname != '') {
+			socket.nickname = nickname;
+			socket.emit('nickname_accepted');
+		}
+	});
+
+	socket.on('play_card', (handIndex, tableIndex) => {
+		let card = socket.deck.visibleCards()[handIndex];
+		let room = getRoom(socket.gamecode);
+		if(card.number === 1 && room.dutchPiles[tableIndex] === null) {
+			room.dutchPiles[tableIndex] = card;
+			socket.deck.postPile[handIndex-1] = socket.deck.blitzPile.pop();
+		}
+		io.to(socket.gamecode).emit('display_dutch_piles', room.dutchPiles);
+		broadcast_all_cards(socket.gamecode);
 	});
 });
 
@@ -146,4 +184,12 @@ function get_opponent_visible_cards(player, gamecode) {
 
 function getRoomSize(gamecode) {
 	return Object.keys(io.sockets.adapter.rooms[gamecode].sockets).length;
+}
+
+function roomExists(gamecode) {
+	return (io.sockets.adapter.rooms[gamecode] != undefined);
+}
+
+function getRoom(gamecode) {
+	return io.sockets.adapter.rooms[gamecode];
 }

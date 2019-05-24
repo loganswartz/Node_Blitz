@@ -1,0 +1,23 @@
+{
+  "name": "node_blitz",
+  "version": "1.0.0",
+  "description": "Online 'Dutch Blitz' app implemented with NodeJS",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/loganswartz/Node_Blitz.git"
+  },
+  "author": "Logan Swartzendruber",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/loganswartz/Node_Blitz/issues"
+  },
+  "homepage": "https://github.com/loganswartz/Node_Blitz#readme",
+  "dependencies": {
+    "express": "^4.17.0",
+    "socket.io": "^2.2.0"
+  }
+}

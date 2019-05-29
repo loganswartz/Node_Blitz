@@ -102,7 +102,7 @@ joinGame.addEventListener('keyup', (e) => {
 function display_hand(element, cards) {
 	for(let i=0; i<4; i++) {
 		// children[0] is the blitz pile, 1-3 are post piles
-		display_hand_card(element.children[i], cards[i]);
+		display_card(element.children[i], cards[i]);
 		element.children[i].dataset.index = i;
 	}
 }
@@ -116,17 +116,17 @@ function display_dutch_piles(element, dutchPiles) {
 function display_pile_card(element, card) {
 	if(card != null && gameTable.contains(element)) {
 		if(element.children.length === 0) {
+			/* Dragula will copy the dragged card element into the pile container for the player who played it, and then we style it appropriately, but when another player plays a new card, that element may not yet exist in the pile container, so if it's empty, we create it that child element here */
 			element.appendChild(document.createElement('div'));
 		}
-		element.children[0].className = `${card.color} card`;
-		element.children[0].innerHTML = `<span>${card.number}</span><div></div><span>${card.number}</span>`
+		display_card(element.children[0], card);
 	} else {
 		element.className = 'clear card';
 		element.innerHTML = '';
 	}
 }
 
-function display_hand_card(element, card) {
+function display_card(element, card) {
 	element.className = `${card.color} card`;
 	element.innerHTML = `<span>${card.number}</span><div></div><span>${card.number}</span>`
 }

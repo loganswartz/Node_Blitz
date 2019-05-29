@@ -69,7 +69,10 @@ io.sockets.on('connection', (socket) => {
 	socket.on('play_card', (handIndex, tableIndex) => {
 		let card = socket.deck.visibleCards()[handIndex];
 		let room = getRoom(socket.gamecode);
-		if(isValidMove(card, room.dutchPiles[tableIndex])) {
+		if(handIndex > socket.deck.visibleCards().length-1 || tableIndex > room.dutchPiles.length-1 || handIndex < 0 || tableIndex < 0) {
+			console.log('Invalid move attempt was disregarded.');
+			socket.emit('display_dutch_piles', room.dutchPiles);
+		} else if(isValidMove(card, room.dutchPiles[tableIndex])) {
 			if(handIndex === 0) {
 				// card was played directly from blitz pile
 				room.dutchPiles[tableIndex] = card;
@@ -82,11 +85,13 @@ io.sockets.on('connection', (socket) => {
 			if(card.number === 10) {
 				room.dutchPiles[tableIndex] = null;
 			}
+			// broadcast new dutch piles and player hand to everyone else
+			io.to(socket.gamecode).emit('display_dutch_piles', room.dutchPiles);
+			broadcast_all_cards(socket.gamecode);
+		} else {
+			// overwrite invalid move with current gameboard.
+			socket.emit('display_dutch_piles', room.dutchPiles);
 		}
-		console.log(room.dutchPiles);
-		console.log(socket.deck);
-		io.to(socket.gamecode).emit('display_dutch_piles', room.dutchPiles);
-		broadcast_all_cards(socket.gamecode);
 	});
 });
 

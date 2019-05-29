@@ -4,70 +4,13 @@ const server = require('http').createServer(app);
 const io = require('socket.io').listen(server);
 const port = 3000;
 const rootPath = 'public'
+const deckFile = require('./deck.js');
+const Deck = deckFile.Deck;
+const Card = deckFile.Card;
 
 server.listen(port);
 app.use(express.static(rootPath));
 console.log(`Server running on port ${port} and serving files from '${rootPath}/'...`);
-
-class Deck {
-	constructor() {
-		let cardColors = ['red', 'green', 'blue', 'yellow'];
-		let cards = [];
-
-		// construct full player deck
-		// 1-10 of each of the 4 colors
-		cardColors.forEach(function(color) {
-			for(let i=1; i<=10; i++) {
-				cards.push(new Card(color, i));
-			}
-		});
-		this.cards = cards;
-		this.shuffle();
-		this.dealDeck();
-	}
-
-	shuffle() {
-		let counter = this.cards.length;
-
-		// While there are elements in the array
-		while (counter > 0) {
-			// Pick a random index
-			let index = Math.floor(Math.random() * counter);
-
-			// Decrease counter by 1
-			counter--;
-
-			// And swap the last element with it
-			let temp = this.cards[counter];
-			this.cards[counter] = this.cards[index];
-			this.cards[index] = temp;
-		}
-	}
-
-	showDeck() {
-		this.cards.forEach(function(card) {
-			console.log(card.color + ' ' + card.number);
-		});
-	}
-
-	dealDeck() {
-		this.blitzPile = this.cards.splice(0, 10);
-		this.postPile = this.cards.splice(0,3);
-		// Put rest of cards in wood pile
-		this.woodPile = this.cards.splice(0, this.cards.length);
-	}
-
-	visibleCards() {
-		return [this.blitzPile[0]].concat(this.postPile);
-	}
-}
-
-class Card {
-	constructor(color, number) {
-		this.color = color;
-		this.number = number;
-	}
-}
 
 
 let connections = 0;
@@ -94,7 +37,7 @@ io.sockets.on('connection', (socket) => {
 		// update card views for everyone in the game
 		broadcast_all_cards(gamecode);
 		room = getRoom(gamecode);
-		room.dutchPiles = [null, null, null, null, null, null, null, null];
+		room.dutchPiles = [null, null, null, null, null, null, null, null, null, null];
 	});
 
 	socket.on('join_game', (gamecode) => {
@@ -126,10 +69,22 @@ io.sockets.on('connection', (socket) => {
 	socket.on('play_card', (handIndex, tableIndex) => {
 		let card = socket.deck.visibleCards()[handIndex];
 		let room = getRoom(socket.gamecode);
-		if(card.number === 1 && room.dutchPiles[tableIndex] === null) {
-			room.dutchPiles[tableIndex] = card;
-			socket.deck.postPile[handIndex-1] = socket.deck.blitzPile.pop();
+		if(isValidMove(card, room.dutchPiles[tableIndex])) {
+			if(handIndex === 0) {
+				// card was played directly from blitz pile
+				room.dutchPiles[tableIndex] = card;
+				socket.deck.blitzPile.pop();
+			} else {
+				room.dutchPiles[tableIndex] = card;
+				socket.deck.postPile[handIndex-1] = socket.deck.blitzPile.pop();
+			}
+			// clear completed piles
+			if(card.number === 10) {
+				room.dutchPiles[tableIndex] = null;
+			}
 		}
+		console.log(room.dutchPiles);
+		console.log(socket.deck);
 		io.to(socket.gamecode).emit('display_dutch_piles', room.dutchPiles);
 		broadcast_all_cards(socket.gamecode);
 	});
@@ -192,4 +147,22 @@ function roomExists(gamecode) {
 
 function getRoom(gamecode) {
 	return io.sockets.adapter.rooms[gamecode];
+}
+
+function isValidMove(card, pile) {
+	if(card.number === 1 && pile === null) {
+		// 1 can only be played on empty spots
+		return true;
+	} else if(card.number != 1 && pile === null) {
+		// cannot play any non-1 cards on empty piles
+		return false;
+	} else if(card.number === pile.number+1 && card.color === pile.color) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+function peek(array) {
+	return array[array.length-1];
 }

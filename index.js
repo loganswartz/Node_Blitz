@@ -86,7 +86,6 @@ io.sockets.on('connection', (socket) => {
 				room.dutchPiles[tableIndex] = null;
 			}
 			// broadcast new dutch piles and player hand to everyone else
-			io.to(socket.gamecode).emit('display_dutch_piles', room.dutchPiles);
 			broadcast_all_cards(socket.gamecode);
 		} else {
 			// overwrite invalid move with current gameboard.
@@ -122,6 +121,8 @@ function getSocketsByRoom(gamecode) {
 
 function broadcast_all_cards(gamecode) {
 	let players = getSocketsByRoom(gamecode);
+	let room = getRoom(gamecode);
+	io.to(gamecode).emit('display_dutch_piles', room.dutchPiles);
 	players.forEach(function(player) {
 		// send all cards to each player in sequence, but with the player's hand always at index 0
 		player.emit('display_hands', [player.deck.visibleCards()].concat(get_opponent_visible_cards(player, gamecode)))

@@ -65,11 +65,11 @@ socket.on('winner', (nickname) => {
 
 socket.on('display_remaining_blitz', (cardsRemaining) => {
 	if(cardsRemaining === 2) {
-		players[0].children[0].classNames.append('hide-1st-card');
+		players[0].children[0].classList.add('hide-1st-card');
 	} else if(cardsRemaining === 1) {
-		players[0].children[0].classNames.append('hide-2nd-card');
+		players[0].children[0].classList.add('hide-2nd-card');
 	} else if(cardsRemaining <= 0) {
-		players[0].children[0].classNames.append('hidden');
+		players[0].children[0].classList.add('invisible');
 	}
 });
 

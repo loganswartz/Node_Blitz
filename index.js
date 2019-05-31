@@ -13,38 +13,39 @@ app.use(express.static(rootPath));
 console.log(`Server running on port ${port} and serving files from '${rootPath}/'...`);
 
 
-let connections = 0;
-
 io.sockets.on('connection', (socket) => {
-	connections++;
-	console.log(`Connected: ${connections} sockets connected`);
+	console.log(`Connected: ${getConnectionCount()} sockets connected`);
+	//console.log(`${socket.id} connected.`);
 
 	socket.on('disconnect', () => {
-		connections--;
+		console.log(`Disconnected: ${getConnectionCount()} sockets connected`);
+		socket.leave(socket.gamecode);
+		//console.log(`${socket.id} disconnected.`);
 	});
 
-	socket.on('create_game', () => {
+	socket.on('create_game', (callback) => {
 		let gamecode = generateGameCode();
 		while(roomExists(gamecode)) {
+			// generate new gamecode if room already exists
 			gamecode = generateGameCode();
 		}
 		socket.join(gamecode);
 		socket.gamecode = gamecode;
 		socket.deck = new Deck();
+		let room = getRoom(gamecode);
+		room.dutchPiles = [null, null, null, null, null, null, null, null, null, null];
 
-		socket.emit('show_game_screen');
-		socket.emit('display_gamecode', gamecode);
+		// init client view
+		callback(true, gamecode);
 		// update card views for everyone in the game
 		broadcast_all_cards(gamecode);
-		room = getRoom(gamecode);
-		room.dutchPiles = [null, null, null, null, null, null, null, null, null, null];
 	});
 
-	socket.on('join_game', (gamecode) => {
+	socket.on('join_game', (gamecode, callback) => {
 		// check if game exists, if so, are there 4 players already?
-		if(roomExists(gamecode) && getRoomSize(gamecode) >= 4) {
+		if(!roomExists(gamecode) || getRoomSize(gamecode) >= 4) {
 			// game full, reject newbies
-			socket.emit('join_game_failed');
+			callback(false, null);
 		} else {
 			// join game
 			socket.join(gamecode);
@@ -52,24 +53,31 @@ io.sockets.on('connection', (socket) => {
 			// deal new deck to player
 			socket.deck = new Deck();
 
-			socket.emit('show_game_screen');
-			socket.emit('display_gamecode', gamecode);
+			callback(true, gamecode);
 			// update card views for everyone in the game
 			broadcast_all_cards(gamecode);
 		}
 	});
 
-	socket.on('set_nickname', (nickname) => {
+	socket.on('set_nickname', (nickname, callback) => {
 		if(nickname != '') {
 			socket.nickname = nickname;
-			socket.emit('nickname_accepted');
+			callback();
 		}
 	});
 
 	socket.on('play_card', (handIndex, tableIndex) => {
 		let card = socket.deck.visibleCards()[handIndex];
 		let room = getRoom(socket.gamecode);
-		if(handIndex > socket.deck.visibleCards().length-1 || tableIndex > room.dutchPiles.length-1 || handIndex < 0 || tableIndex < 0) {
+		if(handIndex > socket.deck.visibleCards().length-1 || tableIndex > room.dutchPiles.length-1 || handIndex < 0 || tableIndex < 0 || !!(handIndex % 1) || !!(tableIndex % 1)) {
+			/*
+			 * Disregard attempt if (applies to both indices):
+			 * 1. index is greater than the size of the player's hand / the game's dutch piles
+			 * 2. index is less than 0
+			 * 3. index is not a round number
+			 *
+			 * (still doesn't avoid certain invalid inputs)
+			 */
 			console.log('Invalid move attempt was disregarded.');
 			socket.emit('display_dutch_piles', room.dutchPiles);
 		} else if(isValidMove(card, room.dutchPiles[tableIndex])) {
@@ -88,8 +96,17 @@ io.sockets.on('connection', (socket) => {
 			// broadcast new dutch piles and player hand to everyone else
 			broadcast_all_cards(socket.gamecode);
 		} else {
-			// overwrite invalid move with current gameboard.
+			// overwrite illegal move with current gameboard.
 			socket.emit('display_dutch_piles', room.dutchPiles);
+		}
+
+		let cardsRemaining = socket.deck.blitzPile.length;
+		if(cardsRemaining <= 2) {
+			// modify visible pile to show there are only a few cards left
+			socket.emit('display_remaining_blitz', cardsRemaining);
+		}
+		if(cardsRemaining <= 0) {
+			io.to(socket.gamecode).emit('winner', socket.nickname);
 		}
 	});
 });
@@ -171,4 +188,8 @@ function isValidMove(card, pile) {
 
 function peek(array) {
 	return array[array.length-1];
+}
+
+function getConnectionCount() {
+	return Object.keys(io.sockets.sockets).length;
 }

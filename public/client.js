@@ -55,52 +55,58 @@ socket.on('display_hands', (hands) => {
 	}
 });
 
-socket.on('join_game_failed', () => {
-	console.log('Game is full, you cannot join.');
-});
-
-socket.on('nickname_accepted', () => {
-	nickname.style.display = 'none';
-	gameSelect.style.display = 'block';
-});
-
-socket.on('show_game_screen', () => {
-	titleScreen.style.display = 'none';
-	gameScreen.style.display = 'block';
-});
-
-socket.on('show_title_screen', () => {
-	gameScreen.style.display = 'none';
-	titleScreen.style.display = 'block';
-});
-
-socket.on('display_gamecode', (gc) => {
-	gamecode.innerHTML = gc;
-});
-
 socket.on('display_dutch_piles', (dutchPiles) => {
 	display_dutch_piles(gameTable, dutchPiles);
 });
 
+socket.on('winner', (nickname) => {
+	display_winner(nickname);
+});
+
+socket.on('display_remaining_blitz', (cardsRemaining) => {
+	if(cardsRemaining === 2) {
+		players[0].children[0].classNames.append('hide-1st-card');
+	} else if(cardsRemaining === 1) {
+		players[0].children[0].classNames.append('hide-2nd-card');
+	} else if(cardsRemaining <= 0) {
+		players[0].children[0].classNames.append('hidden');
+	}
+});
+
 nickname.addEventListener('keyup', (e) => {
 	if(e.keyCode === 13) {
-		socket.emit('set_nickname', nickname.value);
+		socket.emit('set_nickname', nickname.value, function() {
+			// if callback is called, nickname was accepted
+			nickname.style.display = 'none';
+			gameSelect.style.display = 'block';
+		});
 		nickname.value = '';
 	}
 });
 
 createGame.addEventListener('click', (e) => {
-	socket.emit('create_game');
+	socket.emit('create_game', function(resp, gc) { join_game_callback(resp, gc); });
 });
 
 joinGame.addEventListener('keyup', (e) => {
 	if(e.keyCode === 13) {
-		socket.emit('join_game', joinGame.value);
+		socket.emit('join_game', joinGame.value, function(resp, gc) { join_game_callback(resp, gc); });
 	}
 });
 
+function join_game_callback(resp, gc) {
+	// this is called to handle the server response when a client requests to start or join a game. If $resp === 'success', the title screen is hidden, the game screen is shown, and the gamecode is shown. Otherwise, nothing happens.
+	if(resp === true) {
+		titleScreen.style.display = 'none';
+		gameScreen.style.display = 'block';
+		gamecode.innerHTML = gc;
+	} else {
+		console.log('Game is full, you cannot join.');
+	}
+}
+
 function display_hand(element, cards) {
-	for(let i=0; i<4; i++) {
+	for(let i=0; i<cards.length; i++) {
 		// children[0] is the blitz pile, 1-3 are post piles
 		display_card(element.children[i], cards[i]);
 		element.children[i].dataset.index = i;
@@ -108,12 +114,12 @@ function display_hand(element, cards) {
 }
 
 function display_dutch_piles(element, dutchPiles) {
-	for(let i=0; i<10; i++) {
-		display_pile_card(element.children[i], dutchPiles[i]);
+	for(let i=0; i<dutchPiles.length; i++) {
+		display_dutch_card(element.children[i], dutchPiles[i]);
 	}
 }
 
-function display_pile_card(element, card) {
+function display_dutch_card(element, card) {
 	if(card != null && gameTable.contains(element)) {
 		if(element.children.length === 0) {
 			/* Dragula will copy the dragged card element into the pile container for the player who played it, and then we style it appropriately, but when another player plays a new card, that element may not yet exist in the pile container, so if it's empty, we create it that child element here */
@@ -131,3 +137,6 @@ function display_card(element, card) {
 	element.innerHTML = `<span>${card.number}</span><div></div><span>${card.number}</span>`
 }
 
+function display_winner(nickname) {
+	console.log(`${nickname} won!`);
+}
